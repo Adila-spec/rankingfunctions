@@ -25,47 +25,61 @@
   html{scroll-behavior:smooth;}
   body{background:var(--bg); color:var(--text); font-family:var(--sans); line-height:1.6;}
   @media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto;} }
-  .wrap{max-width:900px; margin:0 auto; padding:0 24px;}
 
   header.page-head{
-    background:#0B0B0A; color:#F5F1E9; padding:20px 0 16px; border-bottom:3px solid var(--orange-bright);
+    background:#0B0B0A; color:#F5F1E9; padding:20px 24px 16px; border-bottom:3px solid var(--orange-bright);
   }
   header.page-head h1{font-family:var(--serif); font-size:clamp(20px,3vw,28px); font-weight:600;}
   header.page-head p{color:#C9BDAA; margin-top:6px; font-size:13.5px; max-width:640px;}
 
-  /* ---------- Compact, collapsible tables panel ---------- */
-  .tables-sticky{
-    position:sticky; top:0; z-index:50;
-    background:#FBF9F6; border-bottom:3px solid var(--orange-bright);
-    padding:8px 0;
-    box-shadow:0 4px 14px rgba(0,0,0,0.08);
+  /* ---------- Layout: sidebar (tables) + main content ---------- */
+  .layout{display:flex; align-items:flex-start;}
+
+  .sidebar{
+    width:300px; flex:0 0 300px;
+    background:#FBF9F6; border-right:3px solid var(--orange-bright);
+    position:sticky; top:0; align-self:flex-start;
+    height:100vh; overflow-y:auto;
+    padding:14px 14px 28px;
   }
-  .tables-head{
+  .sidebar-head{
     display:flex; align-items:center; justify-content:space-between;
     font-family:var(--mono); font-size:10.5px; text-transform:uppercase; letter-spacing:0.07em;
-    color:var(--orange-dark); font-weight:700; margin-bottom:6px;
+    color:var(--orange-dark); font-weight:700; margin-bottom:10px;
   }
   .toggle-btn{
     font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:0.05em;
     background:transparent; border:1px solid var(--orange-dark); color:var(--orange-dark);
-    padding:3px 9px; border-radius:12px; cursor:pointer; font-weight:700;
+    padding:3px 9px; border-radius:12px; cursor:pointer; font-weight:700; flex-shrink:0;
   }
   .toggle-btn:hover{background:var(--orange-dark); color:#F5F1E9;}
-  .tables-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; max-height:190px; overflow:hidden; transition:max-height 0.15s ease;}
-  .tables-grid.collapsed{max-height:0;}
-  @media (max-width:820px){ .tables-grid{grid-template-columns:1fr; max-height:none;} .tables-grid{max-height:34vh; overflow-y:auto;} .tables-grid.collapsed{max-height:0; overflow:hidden;} }
+  .tables-grid{display:flex; flex-direction:column; gap:12px; transition:max-height 0.15s ease;}
+  .tables-grid.collapsed{max-height:0; overflow:hidden;}
   .ref-table{background:#fff; border:1px solid var(--line-solid); border-radius:2px; overflow:hidden;}
   .ref-table-title{
     background:#0B0B0A; color:#F5F1E9; font-family:var(--mono); font-size:9.5px;
     text-transform:uppercase; letter-spacing:0.04em; padding:4px 8px;
   }
-  .ref-table-scroll{max-height:150px; overflow-y:auto;}
+  .ref-table-scroll{max-height:220px; overflow-y:auto;}
   .ref-table table{width:100%; border-collapse:collapse; font-size:11px;}
   .ref-table th{background:var(--surface-2); padding:3px 7px; text-align:left; font-family:var(--mono); font-size:9px; text-transform:uppercase; color:var(--muted); position:sticky; top:0;}
   .ref-table td{padding:3px 7px; border-top:1px solid var(--line-solid);}
   .ref-table tr.tie td{background:#E8772218;}
 
-  main{padding:24px 0 80px;}
+  .main-content{flex:1 1 auto; min-width:0; padding:24px; max-width:820px; margin:0 auto;}
+
+  @media (max-width:900px){
+    .layout{flex-direction:column;}
+    .sidebar{
+      width:100%; flex:0 0 auto; position:static; height:auto;
+      border-right:none; border-bottom:3px solid var(--orange-bright);
+    }
+    .tables-grid{max-height:34vh; overflow-y:auto; flex-direction:column;}
+    .tables-grid.collapsed{max-height:0;}
+    .main-content{padding:18px; max-width:none;}
+  }
+
+  main{width:100%;}
   .score-bar{
     display:flex; justify-content:space-between; align-items:center;
     font-family:var(--mono); font-size:12px; color:var(--muted); margin-bottom:20px;
@@ -138,17 +152,15 @@
 <body>
 
 <header class="page-head">
-  <div class="wrap">
-    <h1>Ranking Functions, One Step at a Time</h1>
-    <p>ROW_NUMBER, RANK, and DENSE_RANK — using the same three tables throughout. Questions get harder as you
-       go, including writing the actual SQL window-function syntax yourself.</p>
-  </div>
+  <h1>Ranking Functions, One Step at a Time</h1>
+  <p>ROW_NUMBER, RANK, DENSE_RANK, PARTITION BY, and now subqueries &amp; CTEs — using the same three
+     tables throughout. Questions get harder as you go, including writing real SQL yourself.</p>
 </header>
 
-<div class="tables-sticky">
-  <div class="wrap">
-    <div class="tables-head">
-      <span>Reference tables (always the same)</span>
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-head">
+      <span>Reference tables</span>
       <button class="toggle-btn" id="toggle-tables-btn">Hide ▲</button>
     </div>
     <div class="tables-grid" id="tables-grid">
@@ -184,18 +196,18 @@
       </div>
 
     </div>
+  </aside>
+
+  <div class="main-content">
+    <main>
+      <div class="score-bar">
+        <span id="progress-text">Step 1</span>
+        <span class="score-pill" id="score-pill">Score: 0 / 0</span>
+      </div>
+      <div id="lesson"></div>
+    </main>
   </div>
 </div>
-
-<main>
-  <div class="wrap">
-    <div class="score-bar">
-      <span id="progress-text">Step 1</span>
-      <span class="score-pill" id="score-pill">Score: 0 / 0</span>
-    </div>
-    <div id="lesson"></div>
-  </div>
-</main>
 
 <script>
 // ---------- Fixed reference data (never changes) ----------
@@ -249,7 +261,7 @@ fillTable('t1body', TABLE_1, TABLE_1_TIE_ROWS);
 fillTable('t2body', TABLE_2, TABLE_2_TIE_ROWS);
 fillTable('t3body', TABLE_3, TABLE_3_TIE_ROWS);
 
-// Collapse/expand toggle for the tables panel
+// Collapse/expand toggle for the tables panel (handy on mobile where sidebar stacks on top)
 const toggleBtn = document.getElementById('toggle-tables-btn');
 const tablesGrid = document.getElementById('tables-grid');
 toggleBtn.addEventListener('click', () => {
@@ -292,7 +304,7 @@ function isCodeCorrect(userInput, requiredTokens){
 // type: "info" (text + continue) or "check" (text + one question, must answer before continuing)
 // q.type: "mc" | "fill" | "triplet" | "code"
 const STEPS = [
-  { type: "info", text: `<p>Look at Table 1 above — a foot race, already lined up from the fastest time (top) to the slowest (bottom).</p><p>That sorting step has a name in SQL: <code>ORDER BY</code>. It just means "line everything up in order."</p>` },
+  { type: "info", text: `<p>Look at Table 1 in the sidebar — a foot race, already lined up from the fastest time (top) to the slowest (bottom).</p><p>That sorting step has a name in SQL: <code>ORDER BY</code>. It just means "line everything up in order."</p>` },
 
   { type: "info", text: `<p><code>ROW_NUMBER()</code> gives every row in that order a number: 1, 2, 3, 4... It never repeats a number, no matter what — even if two rows are tied on the value you sorted by.</p>` },
 
@@ -317,10 +329,19 @@ const STEPS = [
 
   { type: "info", text: `<p>So far every row has been ranked together in one big list. Often you want <em>separate</em> rankings per group instead — like ranking each team separately rather than mixing everyone together.</p><p>That's <code>PARTITION BY</code>. It restarts the ranking at 1 for each group. The full syntax looks like:</p><p><code>RANK() OVER (PARTITION BY Team ORDER BY Points DESC)</code></p><p>Read it right to left: sort by Points (highest first), restart per Team, then rank.</p>` },
 
+  { type: "check", text: `<p>Quick vocabulary check before we go further.</p>`,
+    q: { type:"fill", label:"Quick check", q:"Fill in the blank: to make ranking restart separately for each group, you write ______ BY right after the ranking function, inside OVER().", answer:"PARTITION", aliases:["partition by","partition"],
+         explain:`The keyword is <code>PARTITION BY</code>. It goes inside <code>OVER()</code>, before <code>ORDER BY</code>, and tells the database "treat each group as its own mini-table when ranking."` } },
+
   { type: "check", text: `<p>Look at Table 2, Team A: Zoe and Kai tie at 90 points (the top of their team), then Ben at 75, then Priya at 60.</p>`,
     q: { type:"triplet", label:"Quick check", q:"Partitioned by Team, what are Ben's ROW_NUMBER, RANK, and DENSE_RANK within Team A? (comma-separated, in that order)",
          answer:[3,3,2],
          explain:`Within Team A: Zoe and Kai tie for the top spot (ROW_NUMBER 1 & 2, but RANK 1 & 1, DENSE_RANK 1 & 1). Since two rows shared RANK 1, rank 2 is burned — so Ben's RANK is 3. DENSE_RANK never burns numbers, so Ben's DENSE_RANK is 2.` } },
+
+  { type: "check", text: `<p>Now Team B: Ivy is alone at the top with 95 points, then Sam and Nora tie at 80, then Leo at 70.</p>`,
+    q: { type:"triplet", label:"Quick check", q:"Partitioned by Team, what are Leo's ROW_NUMBER, RANK, and DENSE_RANK within Team B? (comma-separated, in that order)",
+         answer:[4,4,3],
+         explain:`Ivy is alone at the top (1,1,1) — no tie yet. Sam and Nora then tie for 2nd: ROW_NUMBER gives them 2 and 3, but RANK and DENSE_RANK both give them 2. Since two rows shared RANK 2, rank 3 is burned, so Leo's RANK is 4. DENSE_RANK never burns numbers, so Leo's DENSE_RANK is just 3.` } },
 
   { type: "check", text: `<p>Now write the SQL yourself. Using Table 2, you want to rank students <em>within each team</em> by Points (highest first), where tied students share a rank and the next rank afterward is skipped.</p>`,
     q: { type:"code", label:"Write the code", q:"Fill in the blank: SELECT Team, Student, Points, ______ AS team_rank FROM team_points;",
@@ -328,6 +349,20 @@ const STEPS = [
          requiredTokens:["rank()","over(","partitionbyteam","orderbypointsdesc"],
          answer:"RANK() OVER (PARTITION BY Team ORDER BY Points DESC)",
          explain:`The blank is <code>RANK() OVER (PARTITION BY Team ORDER BY Points DESC)</code>. That restarts ranking at 1 per team, sorts by Points highest-first, and lets ties share a rank while skipping the number(s) after. Result for Team A: Zoe=1, Kai=1, Ben=3, Priya=4.` } },
+
+  { type: "check", text: `<p>Same table, but this time use the version that <em>never</em> skips numbers, so consecutive rank values always exist.</p>`,
+    q: { type:"code", label:"Write the code", q:"Fill in the blank: SELECT Team, Student, Points, ______ AS team_dense_rank FROM team_points;",
+         hint:"Same shape, swap in the never-skip function.",
+         requiredTokens:["denserank()","over(","partitionbyteam","orderbypointsdesc"],
+         answer:"DENSE_RANK() OVER (PARTITION BY Team ORDER BY Points DESC)",
+         explain:`The blank is <code>DENSE_RANK() OVER (PARTITION BY Team ORDER BY Points DESC)</code>. For Team B this gives Ivy=1, Sam=2, Nora=2, Leo=3 — compare to RANK(), which would give Leo=4 instead, since RANK() burns the number 3 on the Sam/Nora tie.` } },
+
+  { type: "check", text: `<p>Now a full query from scratch. Using Table 2, give every single student a different number within their team, even when Points are tied.</p>`,
+    q: { type:"code", label:"Write the full query", q:"Write a full SQL query selecting Team, Student, Points, and a rank column called student_rank, from team_points — ranking within each team by Points (highest first), with no two students in the same team ever sharing a number.",
+         hint:"Which of the three functions never lets two rows share a number, tie or not?",
+         requiredTokens:["select","rownumber()","over(","partitionbyteam","orderbypointsdesc","from"],
+         answer:"SELECT Team, Student, Points, ROW_NUMBER() OVER (PARTITION BY Team ORDER BY Points DESC) AS student_rank FROM team_points;",
+         explain:`A correct answer: <code>SELECT Team, Student, Points, ROW_NUMBER() OVER (PARTITION BY Team ORDER BY Points DESC) AS student_rank FROM team_points;</code> — ROW_NUMBER() is the only one of the three that never lets rows share a number. Zoe and Kai are tied at 90 but still get 1 and 2, not both getting 1.` } },
 
   { type: "check", text: `<p>Switch to Table 3, Troop 2: Hazel (150), Theo (130), then Aria and Miles tied at 110.</p>`,
     q: { type:"triplet", label:"Quick check", q:"Partitioned by Troop, what are Miles's ROW_NUMBER, RANK, and DENSE_RANK within Troop 2? (comma-separated, in that order)",
@@ -341,12 +376,43 @@ const STEPS = [
          answer:"DENSE_RANK() OVER (PARTITION BY Troop ORDER BY BoxesSold DESC)",
          explain:`The blank is <code>DENSE_RANK() OVER (PARTITION BY Troop ORDER BY BoxesSold DESC)</code>. In Troop 1, this gives Ella=1, Finn=1, Ruby=2, Jack=3 — compare that to RANK(), which would give Jack=4 instead, since RANK() would have burned rank 2 on the Ella/Finn tie.` } },
 
-  { type: "check", text: `<p>Last one — write a complete query from scratch. Using Table 3, rank each scout <em>within their own troop</em> by Boxes Sold (highest first), giving every single scout a different number even if their sales are tied.</p>`,
+  { type: "check", text: `<p>Last PARTITION BY drill — write a complete query from scratch. Using Table 3, rank each scout <em>within their own troop</em> by Boxes Sold (highest first), giving every single scout a different number even if their sales are tied.</p>`,
     q: { type:"code", label:"Write the full query", q:"Write a full SQL query that selects Troop, Scout, BoxesSold, and a rank column called scout_rank, from a table called scout_sales — ranking within each troop by BoxesSold (highest first), with no two scouts ever sharing a number.",
          hint:"Which of the three functions never lets two rows share a number, tie or not? Don't forget SELECT ... FROM ... and the full OVER() clause.",
          requiredTokens:["select","rownumber()","over(","partitionbytroop","orderbyboxessolddesc","from"],
          answer:"SELECT Troop, Scout, BoxesSold, ROW_NUMBER() OVER (PARTITION BY Troop ORDER BY BoxesSold DESC) AS scout_rank FROM scout_sales;",
          explain:`A correct answer: <code>SELECT Troop, Scout, BoxesSold, ROW_NUMBER() OVER (PARTITION BY Troop ORDER BY BoxesSold DESC) AS scout_rank FROM scout_sales;</code> — ROW_NUMBER() is the only one of the three that never lets rows share a number, tie or not. In Troop 1, Ella and Finn are tied at 120 boxes but still get 1 and 2, not both getting 1.` } },
+
+  { type: "info", text: `<p>Here's a wrinkle every SQL writer hits eventually: you <b>cannot</b> write <code>WHERE team_rank = 1</code> in the same SELECT that defines <code>team_rank</code>. The database evaluates WHERE before it computes window functions, so the column doesn't exist yet at that point.</p><p>The fix: compute the ranking first, in a subquery, then filter on the <em>outside</em>, where the ranking column already exists.</p>` },
+
+  { type: "check", text: `<p>Here's the subquery pattern applied to Table 2 — ranking students within their team, then keeping only the top scorer of each team.</p><p><code>SELECT * FROM (SELECT Team, Student, Points, RANK() OVER (PARTITION BY Team ORDER BY Points DESC) AS team_rank FROM team_points) AS ranked WHERE ______;</code></p>`,
+    q: { type:"code", label:"Fill in the blank", q:"What goes in the WHERE clause to keep only the top-ranked student per team?",
+         hint:"You're filtering on the alias you gave the ranking column, looking for the best rank.",
+         requiredTokens:["teamrank=1"],
+         answer:"team_rank = 1",
+         explain:`The blank is <code>team_rank = 1</code>. The inner query computes the ranking and names it <code>team_rank</code>; the outer query then filters on that column, since by the time WHERE runs on the outside, <code>team_rank</code> already exists as a real column. Result: Zoe, Kai (tied at 1), and Ivy.` } },
+
+  { type: "info", text: `<p>That subquery works, but nesting queries gets hard to read as things grow. A <b>CTE</b> (Common Table Expression) does the exact same job with a <code>WITH</code> clause up front, then a clean SELECT below it:</p><p><code>WITH ranked AS (SELECT Team, Student, Points, RANK() OVER (PARTITION BY Team ORDER BY Points DESC) AS team_rank FROM team_points) SELECT * FROM ranked WHERE team_rank = 1;</code></p><p>Same result as the subquery — just named and easier to follow, especially once you start chaining several steps together.</p>` },
+
+  { type: "check", text: `<p>Your turn. Using Table 3, write a full query with a CTE named <code>ranked</code> that finds only the top-selling scout(s) in each troop from <code>scout_sales</code>. Name the rank column <code>troop_rank</code>.</p>`,
+    q: { type:"code", label:"Write the full CTE query", q:"Write a full query: WITH ranked AS (...) SELECT ... FROM ranked WHERE ...",
+         hint:"Inside the CTE: partition by Troop, order by BoxesSold DESC, and use a function that gives ties the same number. Outside: filter troop_rank = 1.",
+         requiredTokens:["with","ranked","rank(","over(","partitionbytroop","orderbyboxessolddesc","select","from","where","trooprank=1"],
+         answer:"WITH ranked AS (SELECT Troop, Scout, BoxesSold, RANK() OVER (PARTITION BY Troop ORDER BY BoxesSold DESC) AS troop_rank FROM scout_sales) SELECT * FROM ranked WHERE troop_rank = 1;",
+         explain:`A correct answer: <code>WITH ranked AS (SELECT Troop, Scout, BoxesSold, RANK() OVER (PARTITION BY Troop ORDER BY BoxesSold DESC) AS troop_rank FROM scout_sales) SELECT * FROM ranked WHERE troop_rank = 1;</code> — either RANK() or DENSE_RANK() works here, since they only differ on what happens after a tie, and we're just keeping rank 1. In Troop 1, Ella and Finn are both rank 1 (tied at 120 boxes), so both rows come back.` } },
+
+  { type: "check", text: `<p>Trickier: suppose you want the <em>second-highest distinct sales total</em> in each troop, not just "whatever sits in row 2." In Troop 1, Ella and Finn tie for the top spot at 120 boxes, and Ruby is next at 95.</p>`,
+    q: { type:"mc", label:"Quick check", q:"Inside the CTE, which function should you use so that WHERE troop_rank = 2 correctly returns Ruby?",
+         choices:["DENSE_RANK() — it never skips a number after a tie","RANK() — it skips a number after a tie","ROW_NUMBER() — it never repeats a number","Any of the three work the same way here"],
+         correct:0,
+         explain:`Use DENSE_RANK(). With RANK(), Ella and Finn's tie at position 1 burns rank 2 entirely, so troop_rank = 2 would come back empty for Troop 1. DENSE_RANK() never burns numbers, so Ruby correctly lands on troop_rank = 2.` } },
+
+  { type: "check", text: `<p>One more CTE, and this time skip PARTITION BY entirely — you want a single overall ranking across <em>every</em> troop combined, not separated by troop.</p>`,
+    q: { type:"code", label:"Write the full CTE query", q:"Write a full query using a CTE named overall that finds the single top-selling scout across all troops combined (no partitioning), from scout_sales. Name the rank column overall_rank.",
+         hint:"Leave PARTITION BY out of OVER() completely — just ORDER BY BoxesSold DESC. Filter overall_rank = 1 on the outside.",
+         requiredTokens:["with","overall","rank(","over(","orderbyboxessolddesc","select","from","where","overallrank=1"],
+         answer:"WITH overall AS (SELECT Troop, Scout, BoxesSold, RANK() OVER (ORDER BY BoxesSold DESC) AS overall_rank FROM scout_sales) SELECT * FROM overall WHERE overall_rank = 1;",
+         explain:`A correct answer: <code>WITH overall AS (SELECT Troop, Scout, BoxesSold, RANK() OVER (ORDER BY BoxesSold DESC) AS overall_rank FROM scout_sales) SELECT * FROM overall WHERE overall_rank = 1;</code> — with no PARTITION BY, the ranking runs over the whole table at once, so this returns just Hazel (Troop 2, 150 boxes), the single highest seller everywhere.` } },
 
   { type: "done" }
 ];
@@ -377,7 +443,7 @@ function renderStep(i){
     card.className = 'complete-card';
     card.innerHTML = `
       <div class="big">${score} / ${totalQuestions}</div>
-      <p>You made it through ROW_NUMBER, RANK, DENSE_RANK, and PARTITION BY — including writing the SQL yourself.</p>
+      <p>You made it through ROW_NUMBER, RANK, DENSE_RANK, PARTITION BY, subqueries, and CTEs — including writing the SQL yourself.</p>
       <button class="btn" id="restart-btn">Start Over</button>
     `;
     lessonEl.appendChild(card);
