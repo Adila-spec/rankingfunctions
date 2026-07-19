@@ -451,6 +451,123 @@ const STEPS = [
          answer:"SELECT Troop, Scout, BoxesSold, ROW_NUMBER() OVER (PARTITION BY Troop ORDER BY BoxesSold DESC) AS scout_rank FROM scout_sales;",
          explain:`A correct answer: <code>SELECT Troop, Scout, BoxesSold, ROW_NUMBER() OVER (PARTITION BY Troop ORDER BY BoxesSold DESC) AS scout_rank FROM scout_sales;</code> — ROW_NUMBER() is the only one of the three that never lets rows share a number, tie or not. In Troop 1, Ella and Finn are tied at 120 boxes but still get 1 and 2, not both getting 1.` } },
 
+  { type: "info", text: `<p>PARTITION BY isn't just for ranking. The same OVER() syntax also works with aggregate functions — <code>SUM()</code>, <code>AVG()</code>, <code>COUNT()</code>, <code>MIN()</code>, <code>MAX()</code> — as <b>window aggregates</b>. The key difference from a normal GROUP BY aggregate: a window aggregate keeps every original row, it just tags each one with a group-level number.</p>` },
+
+  { type: "check", text: `<p>Compare these two ideas directly.</p>`,
+    q: { type:"mc", label:"Quick check", q:"What's the key difference between AVG(Points) OVER (PARTITION BY Team) and a normal GROUP BY Team with AVG(Points)?",
+         choices:["The window version keeps all 8 rows, repeating the team average on each; GROUP BY collapses down to one row per team","They always return the exact same number of rows","GROUP BY keeps all rows; the window version collapses them","There's no difference — they're just two ways of writing the same thing"],
+         correct:0,
+         explain:`GROUP BY collapses many rows into one summary row per group. A window aggregate with OVER (PARTITION BY ...) does the math per group too, but leaves every original row intact — it just repeats the group's number on each matching row.` } },
+
+  { type: "check", text: `<p>Table 2, Team A: Zoe 90, Kai 90, Ben 75, Priya 60.</p>`,
+    q: { type:"fill", label:"Quick check", q:"What is AVG(Points) OVER (PARTITION BY Team) for every Team A row? (average of 90, 90, 75, 60)", answer:"78.75", numeric:true,
+         explain:`(90 + 90 + 75 + 60) / 4 = 315 / 4 = 78.75. Every Team A row gets this same value repeated next to it — Zoe's row, Kai's row, Ben's row, and Priya's row all show 78.75.` } },
+
+  { type: "check", text: `<p>Now write the query yourself, using Table 2.</p>`,
+    q: { type:"code", label:"Write the code", q:"Fill in the blank: SELECT Team, Student, Points, ______ AS team_avg FROM team_points;",
+         hint:"Aggregate function name, then OVER(), then PARTITION BY the grouping column — no ORDER BY needed here.",
+         requiredTokens:["avg(points)","over(","partitionbyteam"],
+         answer:"AVG(Points) OVER (PARTITION BY Team)",
+         explain:`The blank is <code>AVG(Points) OVER (PARTITION BY Team)</code>. No ORDER BY is needed since we just want one overall average per team, not a running total.` } },
+
+  { type: "check", text: `<p>Table 2, Team B: Ivy 95, Sam 80, Nora 80, Leo 70.</p>`,
+    q: { type:"fill", label:"Quick check", q:"What is AVG(Points) OVER (PARTITION BY Team) for every Team B row?", answer:"81.25", numeric:true,
+         explain:`(95 + 80 + 80 + 70) / 4 = 325 / 4 = 81.25 — repeated on all four Team B rows.` } },
+
+  { type: "check", text: `<p>Same table, different aggregate: this time you want each row tagged with its team's total points, not the average.</p>`,
+    q: { type:"code", label:"Write the code", q:"Fill in the blank: SELECT Team, Student, Points, ______ AS team_total FROM team_points;",
+         hint:"Swap AVG for the aggregate that adds everything up.",
+         requiredTokens:["sum(points)","over(","partitionbyteam"],
+         answer:"SUM(Points) OVER (PARTITION BY Team)",
+         explain:`The blank is <code>SUM(Points) OVER (PARTITION BY Team)</code>. Every Team A row gets 315 (90+90+75+60); every Team B row gets 325 (95+80+80+70).` } },
+
+  { type: "check", text: `<p>Quick arithmetic check on that last one.</p>`,
+    q: { type:"fill", label:"Quick check", q:"What team_total value would appear next to every Team A row?", answer:"315", numeric:true,
+         explain:`90 + 90 + 75 + 60 = 315. SUM(Points) OVER (PARTITION BY Team) repeats this number on every Team A row.` } },
+
+  { type: "check", text: `<p>Window aggregates work with COUNT() too — handy for tagging each row with the size of its own group.</p>`,
+    q: { type:"code", label:"Write the code", q:"Fill in the blank: SELECT Team, Student, Points, ______ AS team_size FROM team_points;",
+         hint:"COUNT(*) counts rows; pair it with OVER (PARTITION BY ...) the same way as SUM and AVG.",
+         requiredTokens:["count(*)","over(","partitionbyteam"],
+         answer:"COUNT(*) OVER (PARTITION BY Team)",
+         explain:`The blank is <code>COUNT(*) OVER (PARTITION BY Team)</code>. Since both Team A and Team B have exactly 4 students, every single row in this table would show team_size = 4.` } },
+
+  { type: "check", text: `<p>Quick check on that.</p>`,
+    q: { type:"fill", label:"Quick check", q:"What team_size value would appear next to Ivy's row (Team B)?", answer:"4", numeric:true,
+         explain:`Team B has four students (Ivy, Sam, Nora, Leo), so COUNT(*) OVER (PARTITION BY Team) gives every Team B row a team_size of 4.` } },
+
+  { type: "check", text: `<p>MAX() and MIN() work as window aggregates too — useful for tagging each row with its group's best or worst value without losing any rows.</p>`,
+    q: { type:"code", label:"Write the code", q:"Fill in the blank: SELECT Team, Student, Points, ______ AS team_max FROM team_points;",
+         hint:"Swap in the aggregate that finds the highest value.",
+         requiredTokens:["max(points)","over(","partitionbyteam"],
+         answer:"MAX(Points) OVER (PARTITION BY Team)",
+         explain:`The blank is <code>MAX(Points) OVER (PARTITION BY Team)</code>. Every Team A row shows 90 (Zoe/Kai's tied high score); every Team B row shows 95 (Ivy's score).` } },
+
+  { type: "check", text: `<p>Quick check on that.</p>`,
+    q: { type:"fill", label:"Quick check", q:"What team_max value would appear next to every Team B row?", answer:"95", numeric:true,
+         explain:`Ivy's 95 is the highest score on Team B, so MAX(Points) OVER (PARTITION BY Team) repeats 95 on every Team B row, including Sam, Nora, and Leo's.` } },
+
+  { type: "check", text: `<p>Switch to Table 3, scout_sales, and use MIN() as a window aggregate.</p>`,
+    q: { type:"code", label:"Write the code", q:"Fill in the blank: SELECT Troop, Scout, BoxesSold, ______ AS troop_min FROM scout_sales;",
+         hint:"Same shape, but partition by Troop and find the smallest BoxesSold value.",
+         requiredTokens:["min(boxessold)","over(","partitionbytroop"],
+         answer:"MIN(BoxesSold) OVER (PARTITION BY Troop)",
+         explain:`The blank is <code>MIN(BoxesSold) OVER (PARTITION BY Troop)</code>. Every Troop 1 row shows 80 (Jack's total, the lowest in that troop); every Troop 2 row shows 110 (Aria and Miles's tied low).` } },
+
+  { type: "check", text: `<p>Quick arithmetic check.</p>`,
+    q: { type:"fill", label:"Quick check", q:"What troop_min value would appear next to every Troop 2 row?", answer:"110", numeric:true,
+         explain:`Troop 2's sales are Hazel 150, Theo 130, Aria 110, Miles 110. The lowest is 110, so MIN(BoxesSold) OVER (PARTITION BY Troop) repeats 110 on all four Troop 2 rows.` } },
+
+  { type: "info", text: `<p>One more trick: if you add <code>ORDER BY</code> inside the OVER() clause alongside a SUM(), it stops being a flat group total and instead becomes a <b>running total</b> — adding up row by row as you move down the sorted list.</p>` },
+
+  { type: "check", text: `<p>Think about what changes when ORDER BY joins the OVER() clause.</p>`,
+    q: { type:"mc", label:"Quick check", q:"What does SUM(OrderTotal) OVER (ORDER BY OrderTotal DESC) compute, compared to SUM(OrderTotal) OVER () with no ORDER BY?",
+         choices:["A running (cumulative) total as rows are processed in that order, instead of one flat grand total repeated everywhere","Exactly the same result either way","An average instead of a sum","A syntax error — ORDER BY isn't allowed with SUM()"],
+         correct:0,
+         explain:`Without ORDER BY, SUM() OVER() just repeats the one grand total on every row. Adding ORDER BY makes it accumulate: each row's value becomes "everything from the top of the sort down through this row."` } },
+
+  { type: "check", text: `<p>Try it on Table 4, toy_orders — every OrderTotal here is a different number, so there are no ties to worry about.</p>`,
+    q: { type:"code", label:"Write the code", q:"Fill in the blank: SELECT Customer, OrderTotal, ______ AS running_total FROM toy_orders;",
+         hint:"SUM() OVER, ordered by OrderTotal descending, with no PARTITION BY needed since we want one running total across everyone.",
+         requiredTokens:["sum(ordertotal)","over(","orderbyordertotaldesc"],
+         answer:"SUM(OrderTotal) OVER (ORDER BY OrderTotal DESC)",
+         explain:`The blank is <code>SUM(OrderTotal) OVER (ORDER BY OrderTotal DESC)</code>. Sorted highest-first, it accumulates: Mason 200 → 200, Olivia 130 → 330, Owen 110 → 440, and so on down the list.` } },
+
+  { type: "check", text: `<p>Using that running total, ordered by OrderTotal descending: Mason (200), then Olivia (130), then Owen (110).</p>`,
+    q: { type:"fill", label:"Quick check", q:"What running_total value lands on Owen's row?", answer:"440", numeric:true,
+         explain:`200 (Mason) + 130 (Olivia) + 110 (Owen) = 440. Each row's running_total is the sum of every OrderTotal from the top of the sorted list down through that row.` } },
+
+  { type: "check", text: `<p>Window functions can be mixed freely in one SELECT — a ranking function and a window aggregate, side by side.</p>`,
+    q: { type:"code", label:"Write the code", q:"Fill in the blanks: SELECT Troop, Scout, BoxesSold, ______ AS troop_rank, ______ AS troop_total FROM scout_sales;",
+         hint:"First blank: RANK() partitioned/ordered like before. Second blank: SUM() partitioned by Troop, no ORDER BY needed.",
+         requiredTokens:["rank()","over(","partitionbytroop","orderbyboxessolddesc","sum(boxessold)"],
+         answer:"RANK() OVER (PARTITION BY Troop ORDER BY BoxesSold DESC) AS troop_rank, SUM(BoxesSold) OVER (PARTITION BY Troop) AS troop_total",
+         explain:`A correct answer: <code>RANK() OVER (PARTITION BY Troop ORDER BY BoxesSold DESC) AS troop_rank, SUM(BoxesSold) OVER (PARTITION BY Troop) AS troop_total</code>. Every row now carries both its rank within the troop and the troop's overall total, in the same result set.` } },
+
+  { type: "check", text: `<p>Window aggregates are also handy for comparisons — like showing how far each student is from their own team's average, right in the same row.</p>`,
+    q: { type:"code", label:"Write the code", q:"Fill in the blank: SELECT Team, Student, Points, ______ AS diff_from_avg FROM team_points;",
+         hint:"Subtract the window average from the row's own Points value.",
+         requiredTokens:["points","-","avg(points)","over(","partitionbyteam"],
+         answer:"Points - AVG(Points) OVER (PARTITION BY Team)",
+         explain:`The blank is <code>Points - AVG(Points) OVER (PARTITION BY Team)</code>. This subtracts the repeated team average from each row's own Points, giving a "how far above/below average" number per student.` } },
+
+  { type: "check", text: `<p>Using that expression on Zoe's row: Zoe scored 90, and Team A's average is 78.75.</p>`,
+    q: { type:"fill", label:"Quick check", q:"What is Zoe's diff_from_avg value?", answer:"11.25", numeric:true,
+         explain:`90 - 78.75 = 11.25. Zoe scored 11.25 points above her team's average.` } },
+
+  { type: "check", text: `<p>One last conceptual check before moving on.</p>`,
+    q: { type:"mc", label:"Quick check", q:"Can you write WHERE diff_from_avg > 0 in the very same SELECT that defines diff_from_avg, the way you might try with team_rank?",
+         choices:["No — window functions (aggregates included) are computed after WHERE runs, so you'd need a subquery or CTE, just like with ranking functions","Yes — aggregates are always allowed directly in WHERE","Yes, but only if you also use GROUP BY","No — window functions can never be filtered on, even with a subquery"],
+         correct:0,
+         explain:`Window aggregates follow the exact same rule as ranking functions: WHERE is evaluated before window functions are computed, so the column doesn't exist yet at that point. You need to wrap it in a subquery or CTE and filter on the outside.` } },
+
+  { type: "check", text: `<p>Put that fix into practice with a CTE, using Table 2 — keep only the students who scored above their own team's average.</p>`,
+    q: { type:"code", label:"Write the full CTE query", q:"Write a full query: WITH avgs AS (...) SELECT ... FROM avgs WHERE ...",
+         hint:"Inside the CTE: select Team, Student, Points, and AVG(Points) OVER (PARTITION BY Team) AS team_avg. Outside: filter WHERE Points > team_avg.",
+         requiredTokens:["with","avgs","avg(points)","over(","partitionbyteam","select","from","where","points>team_avg"],
+         answer:"WITH avgs AS (SELECT Team, Student, Points, AVG(Points) OVER (PARTITION BY Team) AS team_avg FROM team_points) SELECT * FROM avgs WHERE Points > team_avg;",
+         explain:`A correct answer: <code>WITH avgs AS (SELECT Team, Student, Points, AVG(Points) OVER (PARTITION BY Team) AS team_avg FROM team_points) SELECT * FROM avgs WHERE Points > team_avg;</code> — this returns Zoe and Kai from Team A (both 90, above 78.75) and Ivy from Team B (95, above 81.25).` } },
+
   { type: "info", text: `<p>Here's a wrinkle every SQL writer hits eventually: you <b>cannot</b> write <code>WHERE team_rank = 1</code> in the same SELECT that defines <code>team_rank</code>. The database evaluates WHERE before it computes window functions, so the column doesn't exist yet at that point.</p><p>The fix: compute the ranking first, in a subquery, then filter on the <em>outside</em>, where the ranking column already exists.</p>` },
 
   { type: "check", text: `<p>Here's the subquery pattern applied to Table 2 — ranking students within their team, then keeping only the top scorer of each team.</p><p><code>SELECT * FROM (SELECT Team, Student, Points, RANK() OVER (PARTITION BY Team ORDER BY Points DESC) AS team_rank FROM team_points) AS ranked WHERE ______;</code></p>`,
@@ -481,6 +598,114 @@ const STEPS = [
          requiredTokens:["with","overall","rank(","over(","orderbyboxessolddesc","select","from","where","overallrank=1"],
          answer:"WITH overall AS (SELECT Troop, Scout, BoxesSold, RANK() OVER (ORDER BY BoxesSold DESC) AS overall_rank FROM scout_sales) SELECT * FROM overall WHERE overall_rank = 1;",
          explain:`A correct answer: <code>WITH overall AS (SELECT Troop, Scout, BoxesSold, RANK() OVER (ORDER BY BoxesSold DESC) AS overall_rank FROM scout_sales) SELECT * FROM overall WHERE overall_rank = 1;</code> — with no PARTITION BY, the ranking runs over the whole table at once, so this returns just Hazel (Troop 2, 150 boxes), the single highest seller everywhere.` } },
+
+  { type: "info", text: `<p>Subqueries aren't just for window-function results — they can also hold a plain aggregate function. A <b>scalar subquery</b> like <code>(SELECT AVG(Points) FROM team_points)</code> returns a single number, which you can then compare against in an outer query's WHERE clause.</p>` },
+
+  { type: "check", text: `<p>Table 2 has 8 rows total: Zoe 90, Kai 90, Ben 75, Priya 60, Ivy 95, Sam 80, Nora 80, Leo 70.</p>`,
+    q: { type:"fill", label:"Quick check", q:"What is the overall average of Points across all 8 rows (not split by team)?", answer:"80", numeric:true,
+         explain:`(90+90+75+60+95+80+80+70) = 640, and 640 / 8 = 80. This is the single number a scalar subquery like (SELECT AVG(Points) FROM team_points) would return.` } },
+
+  { type: "check", text: `<p>Now use that scalar subquery inside a WHERE clause, using Table 2.</p>`,
+    q: { type:"code", label:"Write the code", q:"Write a full query: SELECT * FROM team_points WHERE Points > ______;",
+         hint:"The blank is a subquery in parentheses that computes the overall average Points.",
+         requiredTokens:["select","from","team_points","where","points",">","(select","avg(points)","from","team_points)"],
+         answer:"SELECT * FROM team_points WHERE Points > (SELECT AVG(Points) FROM team_points);",
+         explain:`A correct answer: <code>SELECT * FROM team_points WHERE Points > (SELECT AVG(Points) FROM team_points);</code>. The subquery computes 80 once, and the outer query keeps only rows above it.` } },
+
+  { type: "check", text: `<p>Using that same query (Points > 80, the overall average): Zoe (90), Kai (90), Ben (75), Priya (60), Ivy (95), Sam (80), Nora (80), Leo (70).</p>`,
+    q: { type:"fill", label:"Quick check", q:"How many rows satisfy Points > 80?", answer:"3", numeric:true,
+         explain:`Only Zoe (90), Kai (90), and Ivy (95) beat the overall average of 80. Sam and Nora sit exactly at 80, which doesn't satisfy a strict ">" comparison.` } },
+
+  { type: "info", text: `<p>That subquery ran once, using the whole table. A <b>correlated subquery</b> is different — it re-runs once <em>per outer row</em>, using something from that specific row (like its Team) to filter the inner calculation.</p>` },
+
+  { type: "check", text: `<p>Think about the difference.</p>`,
+    q: { type:"mc", label:"Quick check", q:"What makes a subquery 'correlated' rather than a plain scalar subquery?",
+         choices:["It references a column from the outer query, so it gets recalculated separately for each outer row","It always returns more than one row","It can only be used with COUNT()","It runs exactly once no matter what"],
+         correct:0,
+         explain:`A correlated subquery reaches out and uses a value from the current outer row (like t1.Team) inside its own WHERE clause, so the database re-evaluates it fresh for every row being checked in the outer query — unlike a plain scalar subquery, which computes one fixed number up front.` } },
+
+  { type: "check", text: `<p>Now write a correlated subquery, using Table 2 — find students who scored above <em>their own team's</em> average, not the overall average.</p>`,
+    q: { type:"code", label:"Write the code", q:"Write a full query: SELECT * FROM team_points t1 WHERE Points > ______;",
+         hint:"The blank is a subquery that averages Points from team_points t2, restricted to t2.Team = t1.Team.",
+         requiredTokens:["select","from","team_points","t1","where","points",">","(select","avg(points)","from","team_points","t2","where","t2.team","=","t1.team)"],
+         answer:"SELECT * FROM team_points t1 WHERE Points > (SELECT AVG(Points) FROM team_points t2 WHERE t2.Team = t1.Team);",
+         explain:`A correct answer: <code>SELECT * FROM team_points t1 WHERE Points > (SELECT AVG(Points) FROM team_points t2 WHERE t2.Team = t1.Team);</code>. For each outer row, the inner query only averages that same team's points, so it recalculates 78.75 for Team A rows and 81.25 for Team B rows.` } },
+
+  { type: "check", text: `<p>Using that correlated query on Team A (average 78.75): Zoe 90, Kai 90, Ben 75, Priya 60.</p>`,
+    q: { type:"fill", label:"Quick check", q:"How many Team A students score above their own team's average (78.75)?", answer:"2", numeric:true,
+         explain:`Only Zoe (90) and Kai (90) beat Team A's average of 78.75. Ben (75) and Priya (60) fall below it.` } },
+
+  { type: "check", text: `<p>Now Team B (average 81.25): Ivy 95, Sam 80, Nora 80, Leo 70.</p>`,
+    q: { type:"fill", label:"Quick check", q:"How many Team B students score above their own team's average (81.25)?", answer:"1", numeric:true,
+         explain:`Only Ivy (95) beats Team B's average of 81.25. Sam and Nora (80 each) and Leo (70) all fall below it.` } },
+
+  { type: "check", text: `<p>Same correlated pattern, different table — write it for Table 3, scout_sales, finding scouts who outsold their own troop's average.</p>`,
+    q: { type:"code", label:"Write the code", q:"Write a full query: SELECT * FROM scout_sales t1 WHERE BoxesSold > ______;",
+         hint:"Same shape as before — average BoxesSold from scout_sales t2 where t2.Troop = t1.Troop.",
+         requiredTokens:["select","from","scout_sales","t1","where","boxessold",">","(select","avg(boxessold)","from","scout_sales","t2","where","t2.troop","=","t1.troop)"],
+         answer:"SELECT * FROM scout_sales t1 WHERE BoxesSold > (SELECT AVG(BoxesSold) FROM scout_sales t2 WHERE t2.Troop = t1.Troop);",
+         explain:`A correct answer: <code>SELECT * FROM scout_sales t1 WHERE BoxesSold > (SELECT AVG(BoxesSold) FROM scout_sales t2 WHERE t2.Troop = t1.Troop);</code>. Troop 1's average is 103.75; Troop 2's average is 125.` } },
+
+  { type: "check", text: `<p>Troop 1 (average 103.75): Ella 120, Finn 120, Ruby 95, Jack 80.</p>`,
+    q: { type:"fill", label:"Quick check", q:"How many Troop 1 scouts outsold their troop's average of 103.75?", answer:"2", numeric:true,
+         explain:`Ella (120) and Finn (120) both beat 103.75. Ruby (95) and Jack (80) fall below it.` } },
+
+  { type: "check", text: `<p>Troop 2 (average 125): Hazel 150, Theo 130, Aria 110, Miles 110.</p>`,
+    q: { type:"fill", label:"Quick check", q:"How many Troop 2 scouts outsold their troop's average of 125?", answer:"2", numeric:true,
+         explain:`Hazel (150) and Theo (130) both beat 125. Aria and Miles (110 each) fall below it.` } },
+
+  { type: "check", text: `<p>Scalar subqueries can also sit right in the SELECT list, adding a constant reference value alongside each row.</p>`,
+    q: { type:"code", label:"Write the code", q:"Fill in the blank: SELECT Team, Student, Points, ______ AS overall_avg FROM team_points;",
+         hint:"A subquery in parentheses, computing the overall average across the whole table — no correlation needed here.",
+         requiredTokens:["(select","avg(points)","from","team_points)"],
+         answer:"(SELECT AVG(Points) FROM team_points)",
+         explain:`The blank is <code>(SELECT AVG(Points) FROM team_points)</code>. Every single row shows the same overall_avg of 80, since this subquery isn't correlated to anything in the outer row.` } },
+
+  { type: "check", text: `<p>You can also use a correlated subquery with MAX() instead of a window function, to find the top seller per troop. Using Table 3:</p>`,
+    q: { type:"code", label:"Write the code", q:"Write a full query: SELECT * FROM scout_sales t1 WHERE BoxesSold = ______;",
+         hint:"The blank is a subquery finding the MAX(BoxesSold) from scout_sales t2 where t2.Troop = t1.Troop.",
+         requiredTokens:["select","from","scout_sales","t1","where","boxessold","=","(select","max(boxessold)","from","scout_sales","t2","where","t2.troop","=","t1.troop)"],
+         answer:"SELECT * FROM scout_sales t1 WHERE BoxesSold = (SELECT MAX(BoxesSold) FROM scout_sales t2 WHERE t2.Troop = t1.Troop);",
+         explain:`A correct answer: <code>SELECT * FROM scout_sales t1 WHERE BoxesSold = (SELECT MAX(BoxesSold) FROM scout_sales t2 WHERE t2.Troop = t1.Troop);</code>. This does the same job as RANK() = 1 with PARTITION BY, using a correlated subquery instead of a window function.` } },
+
+  { type: "check", text: `<p>Running that on Troop 1, where Ella and Finn are tied at 120 boxes (the troop's max).</p>`,
+    q: { type:"fill", label:"Quick check", q:"How many rows would come back for Troop 1?", answer:"2", numeric:true,
+         explain:`Since BoxesSold = MAX(BoxesSold) is a straightforward equality check, both Ella and Finn (tied at 120, the troop's highest) satisfy it and are both returned.` } },
+
+  { type: "check", text: `<p>Subqueries can also appear in the FROM clause — a <b>derived table</b>. Here, GROUP BY computes one row per troop inside the subquery, and the outer query filters on that summary.</p>`,
+    q: { type:"code", label:"Write the code", q:"Write a full query: SELECT Troop, troop_total FROM (SELECT Troop, ______ AS troop_total FROM scout_sales GROUP BY Troop) AS totals WHERE troop_total > 400;",
+         hint:"Inside the derived table, use a plain (non-window) aggregate with GROUP BY to total BoxesSold per troop.",
+         requiredTokens:["sum(boxessold)"],
+         answer:"SUM(BoxesSold)",
+         explain:`The blank is <code>SUM(BoxesSold)</code>. Paired with GROUP BY Troop, this collapses each troop down to one row holding its total, which the outer query can then filter with troop_total > 400.` } },
+
+  { type: "check", text: `<p>Troop totals: Troop 1 = 120+120+95+80 = 415. Troop 2 = 150+130+110+110 = 500.</p>`,
+    q: { type:"mc", label:"Quick check", q:"Using WHERE troop_total > 400 on the derived table from the last question, which troops come back?",
+         choices:["Both Troop 1 and Troop 2","Only Troop 1","Only Troop 2","Neither"],
+         correct:0,
+         explain:`Troop 1's total is 415 and Troop 2's total is 500 — both exceed 400, so the derived-table query returns both troops.` } },
+
+  { type: "info", text: `<p>One more subquery type: <code>EXISTS</code>. It doesn't return a value at all — just true or false, depending on whether the inner subquery finds any matching row. It's often paired with a correlated subquery.</p>` },
+
+  { type: "check", text: `<p>Write an EXISTS query on Table 2 — list each distinct Team that has at least one student scoring 90 or above.</p>`,
+    q: { type:"code", label:"Write the code", q:"Write a full query: SELECT DISTINCT Team FROM team_points t1 WHERE EXISTS (______);",
+         hint:"Inside EXISTS: SELECT 1 FROM team_points t2 WHERE t2.Team = t1.Team AND t2.Points >= 90.",
+         requiredTokens:["select distinct","team","from","team_points","t1","where exists","(select","1","from","team_points","t2","where","t2.team","=","t1.team","and","t2.points",">=","90)"],
+         answer:"SELECT DISTINCT Team FROM team_points t1 WHERE EXISTS (SELECT 1 FROM team_points t2 WHERE t2.Team = t1.Team AND t2.Points >= 90);",
+         explain:`A correct answer: <code>SELECT DISTINCT Team FROM team_points t1 WHERE EXISTS (SELECT 1 FROM team_points t2 WHERE t2.Team = t1.Team AND t2.Points >= 90);</code>. EXISTS just checks "does at least one matching row exist?" — it doesn't matter what the inner SELECT actually returns.` } },
+
+  { type: "check", text: `<p>Checking that EXISTS query against both teams: Team A has Zoe and Kai at 90; Team B has Ivy at 95.</p>`,
+    q: { type:"mc", label:"Quick check", q:"Which teams does that EXISTS query return?",
+         choices:["Both Team A and Team B","Only Team A","Only Team B","Neither team"],
+         correct:0,
+         explain:`Team A has Zoe and Kai at 90+, so EXISTS is true for Team A. Team B has Ivy at 95, so EXISTS is true for Team B too. Both teams satisfy the condition.` } },
+
+  { type: "check", text: `<p>Flip it around with NOT EXISTS — find teams where <em>nobody</em> scored 95 or above.</p>`,
+    q: { type:"code", label:"Write the code", q:"Write a full query: SELECT DISTINCT Team FROM team_points t1 WHERE NOT EXISTS (______);",
+         hint:"Same inner subquery shape as before, but check for Points >= 95 this time.",
+         requiredTokens:["select distinct","team","from","team_points","t1","where not exists","(select","1","from","team_points","t2","where","t2.team","=","t1.team","and","t2.points",">=","95)"],
+         answer:"SELECT DISTINCT Team FROM team_points t1 WHERE NOT EXISTS (SELECT 1 FROM team_points t2 WHERE t2.Team = t1.Team AND t2.Points >= 95);",
+         explain:`A correct answer: <code>SELECT DISTINCT Team FROM team_points t1 WHERE NOT EXISTS (SELECT 1 FROM team_points t2 WHERE t2.Team = t1.Team AND t2.Points >= 95);</code>. Team A's best score is 90 (below 95), so NOT EXISTS is true for Team A. Team B has Ivy at 95, so NOT EXISTS is false for Team B.` } },
 
   { type: "info", text: `<p>Last topic: <code>CASE WHEN</code>. It lets you build custom categories out of a column's value — a stack of if/else checks baked right into a SELECT.</p><p><code>CASE WHEN condition1 THEN result1 WHEN condition2 THEN result2 ELSE default END</code></p><p>SQL checks the conditions top to bottom and stops at the first one that's true — order matters, as you'll see in a minute.</p>` },
 
@@ -516,6 +741,129 @@ const STEPS = [
          requiredTokens:["case","when","visits>=4","then","frequent","when","visits>=2","then","regular","else","rare","end"],
          answer:"CASE WHEN Visits >= 4 THEN 'Frequent' WHEN Visits >= 2 THEN 'Regular' ELSE 'Rare' END",
          explain:`The blank is <code>CASE WHEN Visits >= 4 THEN 'Frequent' WHEN Visits >= 2 THEN 'Regular' ELSE 'Rare' END</code>. Olivia's January (6 visits) and February (4 visits) are both Frequent; Emma's January (5) is Frequent but her February (2) drops to Regular; Noah's January (0) and February (1) are both Rare.` } },
+
+  { type: "info", text: `<p>CASE WHEN conditions can combine multiple columns using <code>AND</code> / <code>OR</code>, just like a WHERE clause. And the same "stops at the first match" rule still applies — order still matters, even with compound conditions.</p>` },
+
+  { type: "check", text: `<p>Suppose you write: <code>CASE WHEN Month = 'January' AND Visits >= 5 THEN 'Bonus' WHEN Visits >= 5 THEN 'High' ELSE 'Standard' END</code>. A row has Month = 'February' and Visits = 6.</p>`,
+    q: { type:"mc", label:"Quick check", q:"Which label does that row get?",
+         choices:["'High' — the first branch needs January too, which fails, so SQL falls to the next matching branch","'Bonus' — 6 visits is plenty, regardless of month","'Standard' — compound conditions never fully match","An error, since the branches overlap"],
+         correct:0,
+         explain:`The first branch requires Month = 'January' AND Visits >= 5. Since Month is 'February', that whole AND fails, so SQL moves on. The second branch just needs Visits >= 5, which is true (6 >= 5), so it lands on 'High'.` } },
+
+  { type: "check", text: `<p>Now write it yourself. Using Table 5, label a customer-month 'Bonus' only if it's January <em>and</em> they visited 5 or more times; otherwise 'Standard'.</p>`,
+    q: { type:"code", label:"Write the code", q:"Fill in the blank: SELECT Customer, Month, Visits, ______ AS reward_tier FROM monthly_visits;",
+         hint:"One WHEN branch combining two conditions with AND, then ELSE.",
+         requiredTokens:["case","when","month='january'","and","visits>=5","then","bonus","else","standard","end"],
+         answer:"CASE WHEN Month = 'January' AND Visits >= 5 THEN 'Bonus' ELSE 'Standard' END",
+         explain:`The blank is <code>CASE WHEN Month = 'January' AND Visits >= 5 THEN 'Bonus' ELSE 'Standard' END</code>. Both conditions must hold at once for 'Bonus' — Month must be January, and Visits must be at least 5.` } },
+
+  { type: "check", text: `<p>Checking that against Table 5: Emma Jan (5 visits), Emma Feb (2), Liam Jan (1), Liam Feb (1), Olivia Jan (6), Olivia Feb (4), Noah Jan (0), Noah Feb (1).</p>`,
+    q: { type:"fill", label:"Quick check", q:"How many rows get the 'Bonus' label (January AND 5+ visits)?", answer:"2", numeric:true,
+         explain:`Only Emma's January row (January, 5 visits) and Olivia's January row (January, 6 visits) satisfy both conditions. Olivia's February row has 4 visits — not enough — and everyone else is either the wrong month or under 5 visits.` } },
+
+  { type: "check", text: `<p>CASE WHEN pairs powerfully with aggregate functions — wrapping it inside SUM() lets you count or total only the rows that match a condition, all in one pass, no GROUP BY needed for a single overall number.</p>`,
+    q: { type:"code", label:"Write the code", q:"Fill in the blank: SELECT ______ AS vip_count FROM toy_orders;",
+         hint:"SUM() around a CASE WHEN that outputs 1 for VIP orders (>= 100) and 0 otherwise.",
+         requiredTokens:["sum(case","when","ordertotal>=100","then","1","else","0","end)"],
+         answer:"SUM(CASE WHEN OrderTotal >= 100 THEN 1 ELSE 0 END)",
+         explain:`The blank is <code>SUM(CASE WHEN OrderTotal >= 100 THEN 1 ELSE 0 END)</code>. Each qualifying row contributes 1, each non-qualifying row contributes 0, so the SUM ends up counting how many orders are $100 or more.` } },
+
+  { type: "check", text: `<p>Table 4 order totals: Emma 85, Liam 42, Olivia 130, Noah 15, Ava 60, Mason 200, Sophia 27, Lucas 95, Maya 48, Owen 110.</p>`,
+    q: { type:"fill", label:"Quick check", q:"Using that vip_count expression, how many orders are $100 or more?", answer:"3", numeric:true,
+         explain:`Olivia (130), Mason (200), and Owen (110) are all at or above $100 — three orders total.` } },
+
+  { type: "check", text: `<p>Now total up the <em>dollar amount</em> of just the VIP orders, instead of just counting them.</p>`,
+    q: { type:"code", label:"Write the code", q:"Fill in the blank: SELECT ______ AS vip_revenue FROM toy_orders;",
+         hint:"Same shape, but the THEN branch should output the OrderTotal itself instead of 1.",
+         requiredTokens:["sum(case","when","ordertotal>=100","then","ordertotal","else","0","end)"],
+         answer:"SUM(CASE WHEN OrderTotal >= 100 THEN OrderTotal ELSE 0 END)",
+         explain:`The blank is <code>SUM(CASE WHEN OrderTotal >= 100 THEN OrderTotal ELSE 0 END)</code>. Qualifying rows contribute their own dollar amount; non-qualifying rows contribute 0, so the SUM adds up only the VIP revenue.` } },
+
+  { type: "check", text: `<p>Using that vip_revenue expression on Olivia (130), Mason (200), and Owen (110) — the three VIP orders.</p>`,
+    q: { type:"fill", label:"Quick check", q:"What is the total vip_revenue?", answer:"440", numeric:true,
+         explain:`130 + 200 + 110 = 440. Everyone else contributes 0 to the sum since their orders are under $100.` } },
+
+  { type: "info", text: `<p>This "SUM of CASE WHEN" trick, combined with GROUP BY, is how you <b>pivot</b> data — turning row values (like different months) into separate columns, side by side, for each customer.</p>` },
+
+  { type: "check", text: `<p>Using Table 5, build a column that only counts January visits per customer.</p>`,
+    q: { type:"code", label:"Write the code", q:"Fill in the blank: SELECT Customer, ______ AS jan_visits FROM monthly_visits GROUP BY Customer;",
+         hint:"SUM() around a CASE WHEN that outputs Visits when Month = 'January', and 0 otherwise.",
+         requiredTokens:["sum(case","when","month='january'","then","visits","else","0","end)"],
+         answer:"SUM(CASE WHEN Month = 'January' THEN Visits ELSE 0 END)",
+         explain:`The blank is <code>SUM(CASE WHEN Month = 'January' THEN Visits ELSE 0 END)</code>. February rows contribute 0, so this SUM effectively only adds up each customer's January visits.` } },
+
+  { type: "check", text: `<p>Now do the same thing for February.</p>`,
+    q: { type:"code", label:"Write the code", q:"Fill in the blank: SELECT Customer, ______ AS feb_visits FROM monthly_visits GROUP BY Customer;",
+         hint:"Same shape as jan_visits, just swap the month being checked for.",
+         requiredTokens:["sum(case","when","month='february'","then","visits","else","0","end)"],
+         answer:"SUM(CASE WHEN Month = 'February' THEN Visits ELSE 0 END)",
+         explain:`The blank is <code>SUM(CASE WHEN Month = 'February' THEN Visits ELSE 0 END)</code>. Now January rows contribute 0, so only February visits get summed per customer.` } },
+
+  { type: "check", text: `<p>Put both pivot columns together in one query, so each customer gets a single row showing both months side by side.</p>`,
+    q: { type:"code", label:"Write the full query", q:"Write a full query selecting Customer, jan_visits, and feb_visits from monthly_visits, grouped by Customer, using the SUM(CASE WHEN...) pattern for each month.",
+         hint:"One SELECT with two SUM(CASE WHEN...) expressions, one per month, plus GROUP BY Customer.",
+         requiredTokens:["select","customer","sum(case","when","month='january'","then","visits","else","0","end)","jan_visits","sum(case","when","month='february'","then","visits","else","0","end)","feb_visits","from","monthly_visits","group by","customer"],
+         answer:"SELECT Customer, SUM(CASE WHEN Month = 'January' THEN Visits ELSE 0 END) AS jan_visits, SUM(CASE WHEN Month = 'February' THEN Visits ELSE 0 END) AS feb_visits FROM monthly_visits GROUP BY Customer;",
+         explain:`A correct answer: <code>SELECT Customer, SUM(CASE WHEN Month = 'January' THEN Visits ELSE 0 END) AS jan_visits, SUM(CASE WHEN Month = 'February' THEN Visits ELSE 0 END) AS feb_visits FROM monthly_visits GROUP BY Customer;</code>. Olivia's row would show jan_visits = 6 and feb_visits = 4, both from what used to be two separate rows.` } },
+
+  { type: "check", text: `<p>Quick conceptual check on how CASE handles the leftover case.</p>`,
+    q: { type:"mc", label:"Quick check", q:"If a CASE WHEN expression has no ELSE branch, and none of the WHEN conditions match a given row, what does that row get?",
+         choices:["NULL","0","An empty string ''","An error, forcing you to add an ELSE"],
+         correct:0,
+         explain:`Without an ELSE, an unmatched row simply gets NULL — SQL doesn't error out, but it also doesn't guess a default. That's why it's common (though not required) to add an explicit ELSE branch.` } },
+
+  { type: "check", text: `<p>CASE WHEN is also the standard way to handle NULLs cleanly — replacing them with a readable label instead of showing blank values.</p>`,
+    q: { type:"code", label:"Write the code", q:"Fill in the blank, imagining some OrderTotal values are missing (NULL): SELECT Customer, ______ AS order_status FROM toy_orders;",
+         hint:"CASE WHEN OrderTotal IS NULL THEN a label, ELSE the OrderTotal value itself.",
+         requiredTokens:["case","when","ordertotal is null","then","no order","else","end"],
+         answer:"CASE WHEN OrderTotal IS NULL THEN 'No Order' ELSE OrderTotal END",
+         explain:`The blank is <code>CASE WHEN OrderTotal IS NULL THEN 'No Order' ELSE OrderTotal END</code>. Note the special <code>IS NULL</code> syntax — you can't check for NULL with a plain <code>= NULL</code> comparison in SQL.` } },
+
+  { type: "check", text: `<p>CASE branches can be stacked more than three deep. Add a fourth, top tier: 'Elite' for $150 or more, 'VIP' for $100–$149.99, 'Regular' for $50–$99.99, 'Occasional' under $50.</p>`,
+    q: { type:"code", label:"Write the code", q:"Fill in the blank: SELECT Customer, OrderTotal, ______ AS customer_tier FROM toy_orders;",
+         hint:"Three WHEN branches this time, from the highest threshold down to the lowest, then ELSE.",
+         requiredTokens:["case","when","ordertotal>=150","then","elite","when","ordertotal>=100","then","vip","when","ordertotal>=50","then","regular","else","occasional","end"],
+         answer:"CASE WHEN OrderTotal >= 150 THEN 'Elite' WHEN OrderTotal >= 100 THEN 'VIP' WHEN OrderTotal >= 50 THEN 'Regular' ELSE 'Occasional' END",
+         explain:`The blank is <code>CASE WHEN OrderTotal >= 150 THEN 'Elite' WHEN OrderTotal >= 100 THEN 'VIP' WHEN OrderTotal >= 50 THEN 'Regular' ELSE 'Occasional' END</code>. Mason ($200) becomes 'Elite'; Olivia ($130) and Owen ($110) stay 'VIP' under this finer-grained system.` } },
+
+  { type: "check", text: `<p>Using that four-tier system, Owen's order total is $110.</p>`,
+    q: { type:"fill", label:"Quick check", q:"Which tier does Owen land in under the four-tier system ('Elite' $150+, 'VIP' $100-149.99, 'Regular' $50-99.99, 'Occasional' under $50)?", answer:"VIP",
+         explain:`Owen's $110 is below the $150 Elite threshold but still at or above $100, so he lands in 'VIP' — one tier down from Mason's $200 'Elite' order.` } },
+
+  { type: "check", text: `<p>CASE WHEN isn't limited to SELECT — it's a full expression, so it can also appear inside ORDER BY to control custom sort order.</p>`,
+    q: { type:"mc", label:"Quick check", q:"Why would you use CASE WHEN inside an ORDER BY clause?", 
+         choices:["To sort rows into a custom order that alphabetical or numeric sorting alone can't produce (e.g., always show 'VIP' rows before 'Regular' before 'Occasional')","CASE WHEN can't be used in ORDER BY at all","To make sorting run faster","To remove duplicate rows during sorting"],
+         correct:0,
+         explain:`Alphabetically, 'Occasional' would sort before 'Regular' and 'VIP' would sort last — the opposite of the priority order you probably want. CASE WHEN in ORDER BY lets you map each label to a custom priority number instead.` } },
+
+  { type: "check", text: `<p>Write that custom sort. Using the three-tier system (VIP / Regular / Occasional), order toy_orders so VIP rows come first, then Regular, then Occasional.</p>`,
+    q: { type:"code", label:"Write the code", q:"Fill in the blank: SELECT Customer, OrderTotal, customer_tier FROM toy_orders ORDER BY ______;",
+         hint:"CASE WHEN customer_tier = 'VIP' THEN 1 WHEN customer_tier = 'Regular' THEN 2 ELSE 3 END",
+         requiredTokens:["case","when","customer_tier='vip'","then","1","when","customer_tier='regular'","then","2","else","3","end"],
+         answer:"CASE WHEN customer_tier = 'VIP' THEN 1 WHEN customer_tier = 'Regular' THEN 2 ELSE 3 END",
+         explain:`The blank is <code>CASE WHEN customer_tier = 'VIP' THEN 1 WHEN customer_tier = 'Regular' THEN 2 ELSE 3 END</code>. SQL sorts by these priority numbers ascending, so VIP rows (priority 1) come first, Regular (2) next, and Occasional (3) last.` } },
+
+  { type: "check", text: `<p>One more label to build, using Table 1's race_times. Classify each runner as 'Fast' if their time is under 11.0 seconds, 'Slow' otherwise.</p>`,
+    q: { type:"code", label:"Write the code", q:"Fill in the blank: SELECT Runner, Time, ______ AS speed_class FROM race_times;",
+         hint:"Simple two-branch CASE WHEN on the Time column.",
+         requiredTokens:["case","when","time<11.0","then","fast","else","slow","end"],
+         answer:"CASE WHEN Time < 11.0 THEN 'Fast' ELSE 'Slow' END",
+         explain:`The blank is <code>CASE WHEN Time < 11.0 THEN 'Fast' ELSE 'Slow' END</code>. Mia, Liam, Noah, and Ava (all under 11.0) get 'Fast'; Ethan, Sophia, Lucas, and Mason (11.0 and up) get 'Slow'.` } },
+
+  { type: "check", text: `<p>Table 1 times: Mia 10.1, Liam 10.4, Noah 10.4, Ava 10.9, Ethan 11.0, Sophia 11.0, Lucas 11.0, Mason 11.5.</p>`,
+    q: { type:"fill", label:"Quick check", q:"Using the speed_class rule (Fast = under 11.0), how many runners count as 'Fast'?", answer:"4", numeric:true,
+         explain:`Mia (10.1), Liam (10.4), Noah (10.4), and Ava (10.9) are all strictly under 11.0 — that's 4 runners. Ethan, Sophia, and Lucas sit exactly at 11.0, which doesn't satisfy "under 11.0," so they fall to 'Slow'.` } },
+
+  { type: "check", text: `<p>Same data, the flip side.</p>`,
+    q: { type:"fill", label:"Quick check", q:"Using that same rule, how many runners count as 'Slow' (11.0 seconds or more)?", answer:"4", numeric:true,
+         explain:`Ethan (11.0), Sophia (11.0), Lucas (11.0), and Mason (11.5) all land in 'Slow' — that's 4 runners, matching the 4 'Fast' runners for all 8 total.` } },
+
+  { type: "check", text: `<p>Finally, combine CASE WHEN with a derived table and GROUP BY to count how many runners fall into each speed class — turning the row-by-row label into a real summary.</p>`,
+    q: { type:"code", label:"Write the full query", q:"Write a full query counting runners per speed_class, using a derived table named labeled that applies the CASE WHEN from before, then groups and counts on the outside.",
+         hint:"Inner: SELECT Runner, CASE WHEN Time < 11.0 THEN 'Fast' ELSE 'Slow' END AS speed_class FROM race_times. Outer: SELECT speed_class, COUNT(*) FROM (...) AS labeled GROUP BY speed_class.",
+         requiredTokens:["select","speed_class","count(*)","from","(select","runner","case","when","time<11.0","then","fast","else","slow","end","speed_class","from","race_times)","labeled","group by","speed_class"],
+         answer:"SELECT speed_class, COUNT(*) FROM (SELECT Runner, CASE WHEN Time < 11.0 THEN 'Fast' ELSE 'Slow' END AS speed_class FROM race_times) AS labeled GROUP BY speed_class;",
+         explain:`A correct answer: <code>SELECT speed_class, COUNT(*) FROM (SELECT Runner, CASE WHEN Time < 11.0 THEN 'Fast' ELSE 'Slow' END AS speed_class FROM race_times) AS labeled GROUP BY speed_class;</code>. This returns two rows: 'Fast' with a count of 4, and 'Slow' with a count of 4.` } },
 
   { type: "done" }
 ];
