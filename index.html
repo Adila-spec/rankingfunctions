@@ -150,6 +150,34 @@
     text-align:center; padding:44px 24px; background:#0B0B0A; color:#F5F1E9;
     border-radius:2px; border-top:4px solid var(--orange-bright);
   }
+  /* ---------- Topic Jump Menu ---------- */
+
+.topic-nav{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+
+  margin-bottom:16px;
+  padding:12px;
+
+  border:1px solid var(--line-solid);
+  background:var(--surface-2);
+}
+
+.topic-nav label{
+  font-family:var(--mono);
+  font-size:12px;
+  color:var(--muted);
+}
+
+.topic-nav select{
+  padding:8px 12px;
+  border:1px solid var(--line-solid);
+  background:#fff;
+  font-family:var(--sans);
+  font-size:14px;
+}
   .complete-card .big{font-family:var(--serif); font-size:40px; color:var(--orange-bright); margin-bottom:10px;}
   .complete-card p{color:#C9BDAA; margin-bottom:18px;}
 </style>
@@ -243,15 +271,39 @@
 
   </aside>
 
-  <div class="main-content">
-    <main>
-      <div class="score-bar">
-        <span id="progress-text">Step 1</span>
-        <span class="score-pill" id="score-pill">Score: 0 / 0</span>
-      </div>
-      <div id="lesson"></div>
-    </main>
-  </div>
+ <div class="main-content">
+  <main>
+
+    <!-- Jump To Topic -->
+    <div class="topic-nav">
+      <label for="topic-jump">Jump to Topic:</label>
+
+      <select id="topic-jump">
+        <option value="">Select a topic...</option>
+
+        <option value="0">Ranking Basics</option>
+        <option value="7">PARTITION BY</option>
+        <option value="18">Window Aggregates</option>
+        <option value="42">Subqueries & CTEs</option>
+        <option value="68">CASE WHEN</option>
+        <option value="89">Date Functions</option>
+        <option value="105">Interview Date Questions</option>
+      </select>
+      <button id="goto-dates" class="btn">
+      Jump to Dates
+      </button>
+
+    </div>
+
+    <div class="score-bar">
+      <span id="progress-text">Step 1</span>
+      <span class="score-pill" id="score-pill">Score: 0 / 0</span>
+    </div>
+
+    <div id="lesson"></div>
+
+  </main>
+</div>
 </div>
 
 <script>
@@ -1700,6 +1752,8 @@ let totalQuestions = STEPS.filter(s => s.type === 'check').length;
 const lessonEl = document.getElementById('lesson');
 const progressText = document.getElementById('progress-text');
 const scorePill = document.getElementById('score-pill');
+const topicJump = document.getElementById('topic-jump');
+const gotoDatesBtn = document.getElementById('goto-dates');
 
 function updateProgress(){
   progressText.textContent = `Step ${Math.min(stepIndex+1, STEPS.length)} of ${STEPS.length}`;
@@ -1854,7 +1908,39 @@ function advance(i){
   stepIndex = i + 1;
   renderStep(stepIndex);
 }
+// ---------- Jump To Topic ----------
 
+topicJump.addEventListener('change', () => {
+
+  const selectedStep = parseInt(topicJump.value, 10);
+
+  if (isNaN(selectedStep)) return;
+
+  stepIndex = selectedStep;
+
+  lessonEl.innerHTML = '';
+
+  renderStep(stepIndex);
+
+});
+  gotoDatesBtn.addEventListener('click', () => {
+18
+ 
+19
+lessonEl.innerHTML = '';
+20
+ 
+21
+stepIndex = 89;
+22
+ 
+23
+renderStep(stepIndex);
+24
+ 
+25
+});
+  
 updateProgress();
 renderStep(stepIndex);
 </script>
