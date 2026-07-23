@@ -223,8 +223,24 @@
         </table>
         </div>
       </div>
-
     </div>
+    
+    <div class="ref-table">
+      <div class="ref-table-title">Table 6 — Customer Orders</div>
+      <div class="ref-table-scroll">
+      <table>
+          <thead>
+          <tr>
+            <th>Customer</th>
+            <th>Order Date</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody id="t6body"></tbody>
+      </table>
+      </div>
+    </div>
+
   </aside>
 
   <div class="main-content">
@@ -304,7 +320,18 @@ const TABLE_5 = [
   ["Noah","January","0"],
   ["Noah","February","1"]
 ];
-
+// Table 6: Customer Orders with Dates
+const TABLE_6 = [
+  ["Emma","2024-01-15","120"],
+  ["Emma","2024-02-10","80"],
+  ["Emma","2024-03-20","150"],
+  ["Liam","2024-01-05","60"],
+  ["Liam","2024-01-28","90"],
+  ["Olivia","2024-02-02","200"],
+  ["Olivia","2024-03-18","140"],
+  ["Noah","2024-03-01","70"]
+];
+  
 function fillTable(bodyId, rows, tieRows){
   const body = document.getElementById(bodyId);
   body.innerHTML = rows.map((r, i) => {
@@ -317,6 +344,7 @@ fillTable('t2body', TABLE_2, TABLE_2_TIE_ROWS);
 fillTable('t3body', TABLE_3, TABLE_3_TIE_ROWS);
 fillTable('t4body', TABLE_4, []);
 fillTable('t5body', TABLE_5, []);
+fillTable('t6body', TABLE_6, []);
 
 // Collapse/expand toggle for the tables panel (handy on mobile where sidebar stacks on top)
 const toggleBtn = document.getElementById('toggle-tables-btn');
@@ -864,7 +892,804 @@ const STEPS = [
          requiredTokens:["select","speed_class","count(*)","from","(select","runner","case","when","time<11.0","then","fast","else","slow","end","speed_class","from","race_times)","labeled","group by","speed_class"],
          answer:"SELECT speed_class, COUNT(*) FROM (SELECT Runner, CASE WHEN Time < 11.0 THEN 'Fast' ELSE 'Slow' END AS speed_class FROM race_times) AS labeled GROUP BY speed_class;",
          explain:`A correct answer: <code>SELECT speed_class, COUNT(*) FROM (SELECT Runner, CASE WHEN Time < 11.0 THEN 'Fast' ELSE 'Slow' END AS speed_class FROM race_times) AS labeled GROUP BY speed_class;</code>. This returns two rows: 'Fast' with a count of 4, and 'Slow' with a count of 4.` } },
+  {
+    type: "info",
+    text: `
+    <p>SQL includes special functions for working with dates and timestamps.</p>
+    <p>The most common are EXTRACT(), DATE_TRUNC(), DATEDIFF(), DATEADD(), CURRENT_DATE, and CURRENT_TIMESTAMP.</p>
+    `
+  },
+  {
+  type: "check",
+  text: `<p>Look at Emma's order on 2024-03-20.</p>`,
+  q: {
+    type:"fill",
+    label:"EXTRACT",
+    q:"What does EXTRACT(MONTH FROM '2024-03-20') return?",
+    answer:"3",
+    numeric:true,
+    explain:`March is month 3.`
+  }
+  },
+  {
+  type:"check",
+  text:`<p>Consider the date 2024-03-20.</p>`,
+  q:{
+    type:"fill",
+    label:"EXTRACT",
+    q:"What does EXTRACT(YEAR FROM '2024-03-20') return?",
+    answer:"2024",
+    numeric:true,
+    explain:`The YEAR portion is 2024.`
+  }
+  },
+  {
+  type:"check",
+  text:`<p>DATE_TRUNC groups dates into buckets.</p>`,
+  q:{
+    type:"fill",
+    label:"DATE_TRUNC",
+    q:"What does DATE_TRUNC('month', '2024-03-20') return?",
+    answer:"2024-03-01",
+    aliases:["2024 03 01"],
+    explain:`DATE_TRUNC moves the date to the beginning of the month.`
+  }
+  },
+  {
+  type:"check",
+  text:`<p>Now write the SQL yourself.</p>`,
+  q:{
+    type:"code",
+    label:"Write the code",
+    q:"Fill in the blank: SELECT Customer, ______ AS order_month FROM orders;",
+    requiredTokens:["datetrunc('month'","orderdate"],
+    answer:"DATE_TRUNC('month', OrderDate)",
+    explain:`This converts all dates in the same month to the same bucket.`
+  }
+  },
+  {
+  type:"check",
+  text:`<p>DATEDIFF measures time between dates.</p>`,
+  q:{
+    type:"fill",
+    label:"DATEDIFF",
+    q:"How many days are between 2024-01-15 and 2024-01-20?",
+    answer:"5",
+    numeric:true,
+    explain:`20 - 15 = 5 days.`
+  }
+  },
+  {
+  type:"check",
+  text:`<p>Write a DATEDIFF query.</p>`,
+  q:{
+    type:"code",
+    label:"Write the code",
+    q:"Fill in the blank: SELECT Customer, ______ AS days_since_order FROM orders;",
+    requiredTokens:["datediff(","orderdate","current_date"],
+    answer:"DATEDIFF(day, OrderDate, CURRENT_DATE)",
+    explain:`DATEDIFF calculates elapsed days between two dates.`
+  }
+  },
+  {
+  type:"check",
+  text:`<p>DATEADD moves a date forward or backward.</p>`,
+  q:{
+    type:"fill",
+    label:"DATEADD",
+    q:"What date is 7 days after 2024-01-15?",
+    answer:"2024-01-22",
+    explain:`Adding seven days gives January 22, 2024.`
+  }
+  },
+  {
+  type:"check",
+  text:`<p>Write the SQL.</p>`,
+  q:{
+    type:"code",
+    label:"Write the code",
+    q:"Fill in the blank: SELECT Customer, ______ AS followup_date FROM orders;",
+    requiredTokens:["dateadd(","day","7","orderdate"],
+    answer:"DATEADD(day, 7, OrderDate)",
+    explain:`DATEADD can shift dates forward or backward.`
+  }
+  },  
+  {
+  type:"check",
+  text:`<p>One of the most common analytics patterns is monthly aggregation.</p>`,
+  q:{
+    type:"code",
+    label:"Write the code",
+    q:"Fill in the blank: SELECT _______, SUM(Amount) FROM orders GROUP BY 1;",
+    requiredTokens:["datetrunc('month'","orderdate"],
+    answer:"DATE_TRUNC('month', OrderDate)",
+    explain:`DATE_TRUNC creates monthly buckets for aggregation.`
+  }
+},
+  {
+  type:"check",
+  text:`<p>CURRENT_DATE returns today's date.</p>`,
+  q:{
+    type:"mc",
+    label:"Quick Check",
+    q:"Which SQL expression returns today's date?",
+    choices:[
+      "CURRENT_DATE",
+      "TODAY_DATE",
+      "DATE_NOW",
+      "GETDAY"
+    ],
+    correct:0,
+    explain:`CURRENT_DATE is the standard SQL function for today's date.`
+  }
+},
+{
+  type:"code",
+  text:`<p>Analysts often need only the most recent month of data.</p>`,
+  q:{
+    type:"code",
+    label:"Latest Month",
+    q:"Fill in the blank: SELECT * FROM orders WHERE DATE_TRUNC('month', OrderDate) = ______;",
+    requiredTokens:["(select","max(orderdate)","from","orders"],
+    answer:"(SELECT DATE_TRUNC('month', MAX(OrderDate)) FROM orders)",
+    explain:`The subquery finds the latest date, then DATE_TRUNC converts it into the month's starting date.`
+  }
+},
+  {
+  type:"code",
+  text:`<p>Find orders larger than their month's average.</p>`,
+  q:{
+    type:"code",
+    label:"Monthly Average",
+    q:"Write a CTE that calculates monthly average order amounts.",
+    requiredTokens:[
+      "with",
+      "date_trunc('month'",
+      "avg(amount)",
+      "group by"
+    ],
+    answer:"WITH monthly_avg AS (...)",
+    explain:`This is a very common analytics pattern.`
+  }
+},
+{
+  type:"code",
+  text:`<p>Find each customer's first order date.</p>`,
+  q:{
+    type:"code",
+    label:"First Purchase",
+    q:"What aggregate function finds a customer's earliest order date?",
+    requiredTokens:["min(orderdate)"],
+    answer:"MIN(OrderDate)",
+    explain:`MIN() on a date returns the earliest date.`
+  }
+},
+{
+  type:"code",
+  text:`<p>For each order, calculate days since that customer's first purchase.</p>`,
+  q:{
+    type:"code",
+    label:"Customer Lifetime",
+    q:"Which function measures elapsed days between FirstOrderDate and OrderDate?",
+    requiredTokens:["datediff("],
+    answer:"DATEDIFF(day, FirstOrderDate, OrderDate)",
+    explain:`A common retention metric.`
+  }
+},
+  {
+  type:"code",
+  text:`<p>Find each customer's previous order date.</p>`,
+  q:{
+    type:"code",
+    label:"LAG",
+    q:"Which window function returns the previous order date?",
+    requiredTokens:[
+      "lag(orderdate)",
+      "partitionbycustomer",
+      "orderbyorderdate"
+    ],
+    answer:"LAG(OrderDate) OVER (PARTITION BY Customer ORDER BY OrderDate)",
+    explain:`LAG looks backwards in time.`
+  }
+},
+  {
+  type:"code",
+  text:`<p>Calculate days between purchases.</p>`,
+  q:{
+    type:"code",
+    label:"Purchase Gap",
+    q:"What expression calculates days since the previous order?",
+    requiredTokens:[
+      "datediff(",
+      "lag(orderdate)"
+    ],
+    answer:"DATEDIFF(day, LAG(OrderDate) OVER (PARTITION BY Customer ORDER BY OrderDate), OrderDate)",
+    explain:`This is one of the most common customer analytics patterns.`
+  }
+},
+  {
+  type:"mc",
+  text:`<p>Rolling metrics are important for trend analysis.</p>`,
+  q:{
+    type:"mc",
+    label:"Rolling Window",
+    q:"What does a 30-day rolling revenue metric show?",
+    choices:[
+      "Revenue from the previous 30 days ending on each row",
+      "Revenue from the current month",
+      "Lifetime revenue",
+      "Revenue only on that day"
+    ],
+    correct:0,
+    explain:`A rolling metric constantly moves through time.`
+  }
+},
+  {
+  type:"code",
+  text:`<p>Calculate month-over-month growth.</p>`,
+  q:{
+    type:"code",
+    label:"MoM Growth",
+    q:"Which window function lets you compare a month's revenue to the previous month?",
+    requiredTokens:["lag("],
+    answer:"LAG(monthly_revenue)",
+    explain:`Month-over-month growth almost always uses LAG().`
+  }
+},
+  {
+  type:"code",
+  text:`<p>Find customers who placed orders in every month.</p>`,
+  q:{
+    type:"code",
+    label:"Consistency",
+    q:"Which aggregate helps count unique months?",
+    requiredTokens:["count(distinct"],
+    answer:"COUNT(DISTINCT DATE_TRUNC('month', OrderDate))",
+    explain:`COUNT DISTINCT is commonly used for retention analysis.`
+  }
+},
+  {
+  type:"code",
+  text:`<p>Find each customer's most recent order.</p>`,
+  q:{
+    type:"code",
+    label:"Latest Order",
+    q:"Complete the ranking expression.",
+    requiredTokens:[
+      "rownumber()",
+      "partitionbycustomer",
+      "orderbyorderdatedesc"
+    ],
+    answer:"ROW_NUMBER() OVER (PARTITION BY Customer ORDER BY OrderDate DESC)",
+    explain:`Rank newest orders first, then keep row_number = 1.`
+  }
+},
+  {
+  type: "info",
+  text: `<p>Now we'll move into SQL interview-style date questions. These combine DATE_TRUNC(), EXTRACT(), DATEDIFF(), window functions, CTEs, and subqueries the same way they appear in real analytics interviews.</p>`
+},
 
+{
+  type: "check",
+  text: `<p>Suppose OrderDate = '2024-03-15'.</p>`,
+  q: {
+    type:"fill",
+    label:"Date Functions",
+    q:"What does EXTRACT(MONTH FROM '2024-03-15') return?",
+    answer:"3",
+    numeric:true,
+    explain:`EXTRACT pulls out a portion of a date. March is month 3.`
+  }
+},
+
+{
+  type: "check",
+  text: `<p>Suppose OrderDate = '2024-03-15'.</p>`,
+  q: {
+    type:"fill",
+    label:"Date Functions",
+    q:"What does DATE_TRUNC('month','2024-03-15') return?",
+    answer:"2024-03-01",
+    aliases:["2024 03 01"],
+    explain:`DATE_TRUNC moves a date to the beginning of the specified period.`
+  }
+},
+
+{
+  type: "check",
+  text: `<p>You want monthly reporting buckets.</p>`,
+  q: {
+    type:"code",
+    label:"Write the code",
+    q:"Fill in the blank: SELECT _______, SUM(Amount) FROM orders GROUP BY 1;",
+    requiredTokens:["date_trunc","month","orderdate"],
+    answer:"DATE_TRUNC('month', OrderDate)",
+    explain:`DATE_TRUNC creates monthly buckets for aggregation.`
+  }
+},
+
+{
+  type: "check",
+  text: `<p>A customer ordered on January 5 and again on January 20.</p>`,
+  q: {
+    type:"fill",
+    label:"DATEDIFF",
+    q:"How many days elapsed between the two purchases?",
+    answer:"15",
+    numeric:true,
+    explain:`20 minus 5 equals 15 days.`
+  }
+},
+
+{
+  type: "check",
+  text: `<p>Now calculate days between dates in SQL.</p>`,
+  q: {
+    type:"code",
+    label:"Write the code",
+    q:"Fill in the blank: SELECT _______, AS days_between FROM orders;",
+    requiredTokens:["datediff"],
+    answer:"DATEDIFF(day, FirstDate, SecondDate)",
+    explain:`DATEDIFF measures elapsed time between two dates.`
+  }
+},
+
+{
+  type: "info",
+  text: `<p>A very common interview question is finding a customer's first purchase date.</p>`
+},
+
+{
+  type: "check",
+  text: `<p>You need each customer's earliest order.</p>`,
+  q: {
+    type:"code",
+    label:"Interview Question",
+    q:"Which aggregate function returns a customer's first order date?",
+    requiredTokens:["min(orderdate)"],
+    answer:"MIN(OrderDate)",
+    explain:`MIN() returns the earliest date in a group.`
+  }
+},
+
+{
+  type: "check",
+  text: `<p>You need each customer's most recent order.</p>`,
+  q: {
+    type:"code",
+    label:"Interview Question",
+    q:"Which aggregate function returns a customer's latest order date?",
+    requiredTokens:["max(orderdate)"],
+    answer:"MAX(OrderDate)",
+    explain:`MAX() returns the most recent date in a group.`
+  }
+},
+
+{
+  type: "info",
+  text: `<p>Another extremely common interview question is finding the latest record per customer using ROW_NUMBER().</p>`
+},
+
+{
+  type: "check",
+  text: `<p>You want the newest order first within every customer.</p>`,
+  q: {
+    type:"code",
+    label:"Latest Order",
+    q:"Complete the ORDER BY clause: ROW_NUMBER() OVER (PARTITION BY Customer ORDER BY OrderDate _____)",
+    requiredTokens:["desc"],
+    answer:"DESC",
+    explain:`Use DESC so the newest date gets row number 1.`
+  }
+},
+
+{
+  type: "check",
+  text: `<p>Using: ROW_NUMBER() OVER (PARTITION BY Customer ORDER BY OrderDate DESC)</p>`,
+  q: {
+    type:"fill",
+    label:"Latest Order",
+    q:"Which row number corresponds to the customer's most recent order?",
+    answer:"1",
+    numeric:true,
+    explain:`The most recent row receives ROW_NUMBER = 1.`
+  }
+},
+
+{
+  type: "info",
+  text: `<p>LAG() is one of the most important interview functions because it allows row-to-row comparisons across time.</p>`
+},
+
+{
+  type: "check",
+  text: `<p>Think about moving backward through a customer's purchase history.</p>`,
+  q: {
+    type:"fill",
+    label:"Window Functions",
+    q:"Which function returns the previous row's value?",
+    answer:"LAG",
+    aliases:["lag()"],
+    explain:`LAG() looks backward to a previous row.`
+  }
+},
+
+{
+  type: "check",
+  text: `<p>Think about moving forward through a customer's purchase history.</p>`,
+  q: {
+    type:"fill",
+    label:"Window Functions",
+    q:"Which function returns the next row's value?",
+    answer:"LEAD",
+    aliases:["lead()"],
+    explain:`LEAD() looks ahead to a future row.`
+  }
+},
+
+{
+  type: "check",
+  text: `<p>A customer has multiple purchases. You want the previous purchase date on every row.</p>`,
+  q: {
+    type:"code",
+    label:"Interview Question",
+    q:"Fill in the blank: SELECT Customer, ______ AS previous_order FROM orders;",
+    requiredTokens:[
+      "lag(orderdate)",
+      "partitionbycustomer",
+      "orderbyorderdate"
+    ],
+    answer:"LAG(OrderDate) OVER (PARTITION BY Customer ORDER BY OrderDate)",
+    explain:`LAG() retrieves the previous order's date for that customer.`
+  }
+},
+
+{
+  type: "check",
+  text: `<p>This is a very common interview calculation.</p>`,
+  q: {
+    type:"code",
+    label:"Customer Behavior",
+    q:"What expression calculates days since the previous order?",
+    requiredTokens:[
+      "datediff",
+      "lag(orderdate)"
+    ],
+    answer:"DATEDIFF(day, LAG(OrderDate) OVER (PARTITION BY Customer ORDER BY OrderDate), OrderDate)",
+    explain:`This calculates the gap between consecutive purchases.`
+  }
+},
+
+{
+  type: "info",
+  text: `<p>Now we'll combine dates and CTEs, which is how many analytics interview problems are solved.</p>`
+},
+
+{
+  type: "check",
+  text: `<p>You need monthly revenue.</p>`,
+  q: {
+    type:"code",
+    label:"CTE Practice",
+    q:"Which function should appear inside a CTE to group revenue by month?",
+    requiredTokens:["date_trunc","month","orderdate"],
+    answer:"DATE_TRUNC('month', OrderDate)",
+    explain:`DATE_TRUNC is the standard way to create month buckets.`
+  }
+},
+
+{
+  type: "check",
+  text: `<p>Suppose a CTE produces monthly revenue.</p>`,
+  q: {
+    type:"fill",
+    label:"Interview Question",
+    q:"Which function would you use to compare a month's revenue against the previous month?",
+    answer:"LAG",
+    aliases:["lag()"],
+    explain:`LAG() is the standard solution for month-over-month analysis.`
+  }
+},
+
+{
+  type: "check",
+  text: `<p>You want cumulative revenue over time.</p>`,
+  q: {
+    type:"code",
+    label:"Running Totals",
+    q:"Fill in the blank: SELECT OrderDate, Amount, ______ AS running_revenue FROM orders;",
+    requiredTokens:[
+      "sum(amount)",
+      "over",
+      "orderbyorderdate"
+    ],
+    answer:"SUM(Amount) OVER (ORDER BY OrderDate)",
+    explain:`This creates a running total as time progresses.`
+  }
+},
+
+{
+  type: "check",
+  text: `<p>You want all orders larger than the overall average order amount.</p>`,
+  q: {
+    type:"code",
+    label:"Subqueries",
+    q:"Write the filter expression after WHERE Amount >",
+    requiredTokens:[
+      "(select",
+      "avg(amount)",
+      "from",
+      "orders)"
+    ],
+    answer:"(SELECT AVG(Amount) FROM orders)",
+    explain:`This scalar subquery calculates the overall average order amount.`
+  }
+},
+
+{
+  type: "check",
+  text: `<p>You want orders larger than that customer's own average order amount.</p>`,
+  q: {
+    type:"mc",
+    label:"Interview Concepts",
+    q:"What type of subquery is typically used?",
+    choices:[
+      "Correlated subquery",
+      "Scalar subquery",
+      "Derived table",
+      "Cross join"
+    ],
+    correct:0,
+    explain:`The inner query references the outer customer, making it correlated.`
+  }
+},
+
+{
+  type: "check",
+  text: `<p>You want each customer's latest order.</p>`,
+  q: {
+    type:"code",
+    label:"Classic Interview Question",
+    q:"Complete the ranking expression.",
+    requiredTokens:[
+      "rownumber()",
+      "partitionbycustomer",
+      "orderbyorderdatedesc"
+    ],
+    answer:"ROW_NUMBER() OVER (PARTITION BY Customer ORDER BY OrderDate DESC)",
+    explain:`After creating the ranking, filter WHERE rn = 1 to return each customer's latest order.`
+  }
+},
+
+{
+  type: "check",
+  text: `<p>You want each customer's second most recent order.</p>`,
+  q: {
+    type:"fill",
+    label:"Interview Question",
+    q:"After calculating ROW_NUMBER() ordered by newest first, what value of rn returns the second most recent order?",
+    answer:"2",
+    numeric:true,
+    explain:`rn = 2 gives the second most recent row within each customer.`
+  }
+},
+
+{
+  type: "check",
+  text: `<p>Final interview question.</p>`,
+  q: {
+    type:"mc",
+    label:"Interview Concepts",
+    q:"Which combination of SQL tools is most commonly used to solve advanced analytics interview questions?",
+    choices:[
+      "Window functions, CTEs, dates, and aggregates",
+      "INSERT and DELETE",
+      "Only CASE WHEN",
+      "Only GROUP BY"
+    ],
+    correct:0,
+    explain:`Most medium and hard SQL interviews revolve around combining window functions, date logic, aggregates, and CTEs.`
+  }
+},
+  {
+  type: "check",
+  text: `<p>Suppose Team A and Team B are both in the same table.</p>`,
+  q: {
+    type:"mc",
+    label:"PARTITION BY Basics",
+    q:"What does PARTITION BY Team do?",
+    choices:[
+      "Splits the data into separate Team groups before ranking",
+      "Sorts the entire table alphabetically",
+      "Removes duplicate teams",
+      "Filters out teams with low scores"
+    ],
+    correct:0,
+    explain:`PARTITION BY creates separate groups. Ranking restarts inside each group.`
+  }
+},
+
+{
+  type: "check",
+  text: `<p>Look at Team A and Team B in Table 2.</p>`,
+  q: {
+    type:"fill",
+    label:"PARTITION BY Basics",
+    q:"When PARTITION BY Team is used, what rank does the first row of each team receive?",
+    answer:"1",
+    numeric:true,
+    explain:`Ranking restarts for every partition, so each team begins at rank 1.`
+  }
+},
+
+{
+  type: "check",
+  text: `<p>Think about ranking students by Points within each team.</p>`,
+  q: {
+    type:"mc",
+    label:"PARTITION BY Basics",
+    q:"Which clause creates a separate ranking for each team?",
+    choices:[
+      "PARTITION BY Team",
+      "ORDER BY Team",
+      "GROUP BY Team",
+      "WHERE Team"
+    ],
+    correct:0,
+    explain:`PARTITION BY creates independent ranking groups.`
+  }
+},
+
+{
+  type: "check",
+  text: `<p>You want students ranked separately inside their own team.</p>`,
+  q: {
+    type:"code",
+    label:"Write the code",
+    q:"Fill in the blank: ROW_NUMBER() OVER (______ ORDER BY Points DESC)",
+    requiredTokens:["partitionbyteam"],
+    answer:"PARTITION BY Team",
+    explain:`PARTITION BY Team restarts numbering for each team.`
+  }
+},
+
+{
+  type: "check",
+  text: `<p>Zoe is Team A's highest scorer. Ivy is Team B's highest scorer.</p>`,
+  q: {
+    type:"mc",
+    label:"PARTITION BY Basics",
+    q:"Using ROW_NUMBER() OVER (PARTITION BY Team ORDER BY Points DESC), what row number does Zoe receive and what row number does Ivy receive?",
+    choices:[
+      "1 and 1",
+      "1 and 5",
+      "1 and 2",
+      "2 and 1"
+    ],
+    correct:0,
+    explain:`Because ranking restarts inside each team, both top scorers receive ROW_NUMBER = 1.`
+  }
+},
+
+{
+  type: "check",
+  text: `<p>You have 8 students total across two teams.</p>`,
+  q: {
+    type:"mc",
+    label:"PARTITION BY Basics",
+    q:"Without PARTITION BY, how many rankings are created?",
+    choices:[
+      "One ranking across all 8 students",
+      "One ranking per team",
+      "Two rankings per team",
+      "Zero rankings"
+    ],
+    correct:0,
+    explain:`Without PARTITION BY, SQL treats all rows as one big group.`
+  }
+},
+
+{
+  type: "check",
+  text: `<p>You have 8 students total across two teams.</p>`,
+  q: {
+    type:"mc",
+    label:"PARTITION BY Basics",
+    q:"With PARTITION BY Team, how many separate rankings are created?",
+    choices:[
+      "Two",
+      "One",
+      "Eight",
+      "Four"
+    ],
+    correct:0,
+    explain:`Each team receives its own independent ranking.`
+  }
+},
+
+{
+  type: "check",
+  text: `<p>PARTITION BY and GROUP BY are often confused.</p>`,
+  q: {
+    type:"mc",
+    label:"Concept Check",
+    q:"What is the major difference between PARTITION BY and GROUP BY?",
+    choices:[
+      "PARTITION BY keeps all rows, while GROUP BY collapses rows",
+      "GROUP BY keeps all rows, while PARTITION BY removes rows",
+      "They always produce identical results",
+      "PARTITION BY only works with COUNT()"
+    ],
+    correct:0,
+    explain:`GROUP BY collapses rows into summaries. PARTITION BY keeps every original row and performs calculations within groups.`
+  }
+},
+
+{
+  type: "check",
+  text: `<p>Consider this expression:</p><p><code>AVG(Points) OVER (PARTITION BY Team)</code></p>`,
+  q: {
+    type:"mc",
+    label:"PARTITION BY Basics",
+    q:"What happens to the number of rows returned?",
+    choices:[
+      "All rows remain",
+      "One row per team remains",
+      "Only the highest scoring student remains",
+      "Only teams with ties remain"
+    ],
+    correct:0,
+    explain:`Window functions keep every original row. They simply add calculations alongside those rows.`
+  }
+},
+
+{
+  type: "check",
+  text: `<p>Table 2 has four students on Team A.</p>`,
+  q: {
+    type:"code",
+    label:"Write the code",
+    q:"Fill in the blank: SELECT Team, Student, Points, ______ AS team_size FROM team_points;",
+    requiredTokens:[
+      "count(*)",
+      "over(",
+      "partitionbyteam"
+    ],
+    answer:"COUNT(*) OVER (PARTITION BY Team)",
+    explain:`This counts the number of rows in each team while keeping every student row visible.`
+  }
+},
+
+{
+  type: "check",
+  text: `<p>Zoe scored 90 points. Team A's average score is 78.75.</p>`,
+  q: {
+    type:"mc",
+    label:"PARTITION BY Aggregates",
+    q:"What value would AVG(Points) OVER (PARTITION BY Team) show on Zoe's row?",
+    choices:[
+      "78.75",
+      "90",
+      "315",
+      "4"
+    ],
+    correct:0,
+    explain:`Window averages repeat the team average on every row within that team.`
+  }
+},
+
+{
+  type: "check",
+  text: `<p>Suppose Team A has 4 students and Team B has 4 students.</p>`,
+  q: {
+    type:"fill",
+    label:"PARTITION BY Aggregates",
+    q:"What value would COUNT(*) OVER (PARTITION BY Team) display for every Team B row?",
+    answer:"4",
+    numeric:true,
+    explain:`COUNT(*) OVER (PARTITION BY Team) repeats the team size on every row in that team.`
+  }
+},
   { type: "done" }
 ];
 
